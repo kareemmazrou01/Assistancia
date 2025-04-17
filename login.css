@@ -1,0 +1,200 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body{
+    background-color: #2c2c2c;
+  }
+  html, body {
+    height: 100%;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Main Flex Container */
+  .container-flex {
+    display: flex;
+    height: 100vh; 
+  }
+  
+  h2{
+    font-family: "Rye", serif;
+  }
+  
+.form-control{
+  background-color: #D9D9D9 !important;
+  border-radius: 3px !important;
+
+}
+  .left {
+    flex: 1;
+    background-color: #fff; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .login-box {
+    width: 320px; 
+    padding: 1rem;
+  }
+  
+  .right {
+    flex: 1;
+    background-size: cover;
+    background-color: #342E37;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+
+  .asistencia {
+    color: #fff;
+    font-size: 3rem;        
+    font-family: "Georgia", serif; 
+    letter-spacing: 2px;     
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5); 
+  }
+  
+
+  .forgot-pass {
+    text-decoration: none;
+    color: #D9D9D9;
+  }
+  
+  .forgot-pass:hover {
+    text-decoration: underline;
+  }
+  .form-check-label{
+    color: #D9D9D9;
+  }
+
+.form-check-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  outline: none;
+  box-shadow: none;
+
+  background: radial-gradient(circle at center, #BABABA, #342E37 70%);
+
+  position: relative;
+  cursor: pointer;
+}
+
+.form-check-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.form-check-input:checked {
+  background: radial-gradient(circle at center, #BABABA, #342E37 70%);
+}
+
+.form-check-input:checked::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  width: 5px;
+  height: 10px;
+
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.form-check-input {
+  appearance: none;
+  -webkit-appearance: none;
+
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  
+  /* Remove default borders and highlight */
+  border: none;
+  outline: none;
+  box-shadow: none;
+  
+  /* Dark radial gradient background for the checkbox */
+  background: radial-gradient(circle at center, #BABABA, #342E37 70%);
+  
+  /* Positioning and cursor */
+  position: relative;
+  cursor: pointer;
+}
+
+/* Remove focus styling (blue border) */
+.form-check-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* When the checkbox is checked */
+.form-check-input:checked {
+  background: radial-gradient(circle at center,  #BABABA, #342E37 70%);
+  border:none;
+}
+
+.form-check-input:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 5.5px;
+  width: 5px;
+  height: 10px;
+
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+
+
+
+  
+  @media (max-width: 480px) {
+    .login-box {
+      width: 95%;      
+    }
+  }
+  .responsive-img {
+    max-width: 100%;
+    height: auto; 
+    display: block; 
+  }
+
+
+
+  .login-btn {
+    padding: 8px 16px;
+    font-size: 1rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+  
+  .login-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+
+
+
+
+
+
+  /* My touch */
+
+  /* input:invalid:not(:placeholder-shown){
+    border-color:red;
+    background-image: url(checked_red.png);
+  }
+  input:valid{
+    background-image: url(checked_green.png);
+    border-color: green;
+  } */
