@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asistencia - Live View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="live.css">
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <!-- Optional: Include Font Awesome for icons -->
+  <script src="https://kit.fontawesome.com/YOUR_KIT_ID.js" crossorigin="anonymous"></script>
+
+</head>
+<body>
+<script>
+  fetch('/api/session')
+    .then(res => res.json())
+    .then(data => {
+      if (!data.loggedIn) {
+        window.location.href = 'login.html';
+      } else {
+        const userRole = data.role; // Get the role from session
+        if (userRole === 'student') {
+          // Redirect students to their attendance page or dashboard
+          window.location.href = 'student-dashboard.html';
+        } else if (userRole === 'teacher') {
+          // Teachers can access the live page
+          console.log('Teacher access granted.');
+        } else if (userRole === 'admin') {
+          // Admins have full access
+          console.log('Admin access granted.');
+        }
+      }
+    })
+    .catch(err => {
+      alert('Error checking session: ' + err.message);
+      window.location.href = 'login.html';
+    });
+</script>
+  <!-- Header / Navigation -->
+  <header>
+    <!-- Replace the text logo with an image logo -->
+    <div class="logo">
+      <a href="live.html">
+      <img src="assets/nav_logo.png" alt="Logo">
+    </a>
+    </div>
+    <div class="header-nav-wrapper">
+      <nav>
+        <ul>
+          <li><a href="#" class="active">Home</a></li>
+          <li><a href="#">Report</a></li>
+          <li><a href="student.html">Students</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Left: Live View Section -->
+    <div class="live-view-section">
+      <div class="live-view-header">
+        <h2>Live view</h2>
+        <div class="course-dropdown">
+          <select name="course" id="course">
+            <option value="Course 1">Classroom 1</option>
+            <option value="Course 2">Classroom 2</option>
+            <option value="Course 3">Classroom 3</option>
+          </select>
+        </div>
+      </div>
+      <video class="video-placeholder" autoplay playsinline></video>
+    </div>
+    
+    <!-- Right: Attendance Section with Custom Table -->
+    <div class="attendance-section">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th style="width: 50%;">Name</th>
+            <th style="width: 50%;">Time</th>
+          </tr>
+        </thead>
+        <tbody id="attendance-body">
+          <!-- Filled dynamically -->
+        </tbody>
+      </table>
+      <!-- The Add button is preserved -->
+      <button class="add-button">Add</button>
+    </div>
+  </div>
+  
+  <!-- Frontend -->
+  <script>
+    // Check if the browser supports getUserMedia for camera access
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(stream) {
+          const videoElement = document.querySelector('.video-placeholder');
+          if ('srcObject' in videoElement) {
+            videoElement.srcObject = stream;
+          } else {
+            videoElement.src = window.URL.createObjectURL(stream);
+          }
+        })
+        .catch(function(err) {
+          console.error("Error accessing the camera: ", err);
+        });
+    } else {
+      console.error("getUserMedia is not supported in this browser.");
+    }
+  </script>
+
+  <!-- Added for backend -->
+  <script>
+    let studentOptions = [];
+
+    function fetchAttendance() {
+      fetch('/api/attendance')
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('attendance-body');
+          tbody.innerHTML = '';
+          data.forEach((entry, index) => {
+            tbody.innerHTML += `
+              <tr>
+                <td>
+                  <div class="record-box fonti">
+                    <span class="record-number">${index + 1}.</span>
+                    <span>${entry.name}</span> <!-- ✅ Shows the name -->
+                  </div>
+                </td>
+                <td>
+                  <div class="record-box fonti">
+                    ${new Date(entry.timestamp).toLocaleString()}
+                  </div>
+                </td>
+              </tr>`;
+          });
+        });
+    }
+
+    function fetchStudentsForDropdown() {
+      fetch('/api/students')
+        .then(res => res.json())
+        .then(data => {
+          studentOptions = data;
+        });
+    }
+
+    document.querySelector('.add-button').addEventListener('click', () => {
+      if (studentOptions.length === 0) return alert('No students available.');
+
+      const choices = studentOptions.map(s => `${s.university_id} - ${s.name}`).join('\n');
+      const selected = prompt(`Enter university ID:\n${choices}`);
+
+      const university_id = selected?.split('-')[0]?.trim();
+      if (!university_id) return;
+
+      fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ university_id })
+      })
+      .then(res => res.json())
+      .then(() => fetchAttendance());
+
+    });
+
+    fetchAttendance();
+    fetchStudentsForDropdown();
+  </script>
+
+  
+</body>
+</html>

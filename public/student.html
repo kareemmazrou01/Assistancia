@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asistencia - Students</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="student.css">
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
+
+</head>
+<body>
+<script>
+  fetch('/api/session')
+    .then(res => res.json())
+    .then(data => {
+      if (!data.loggedIn) {
+        window.location.href = 'login.html';
+      } else {
+        const userRole = data.role; // Get the role from session
+        if (userRole === 'student') {
+          // Redirect students to their attendance page or dashboard
+          window.location.href = 'student-dashboard.html';
+        } else if (userRole === 'teacher') {
+          // Teachers can access the live page
+          console.log('Teacher access granted.');
+        } else if (userRole === 'admin') {
+          // Admins have full access
+          console.log('Admin access granted.');
+        }
+      }
+    })
+    .catch(err => {
+      alert('Error checking session: ' + err.message);
+      window.location.href = 'login.html';
+    });
+</script>
+  <!-- Header / Navigation -->
+  <header>
+    <div class="logo">
+      <a href="live.html">
+        <img src="assets/nav_logo.png" alt="Logo">
+      </a>
+    </div>
+    <div class="header-nav-wrapper">
+      <nav>
+        <ul>
+          <li><a href="live.html" class="active">Home</a></li>
+          <li><a href="#">Report</a></li>
+          <li><a href="#" id="student">Students</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  
+  <!-- Main Content -->
+  <div class="main-container">
+    <div class="content-area">
+      <!-- Search / Filter Row -->
+      <div class="search-filter-row">
+        <!-- Centered search bar -->
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search" />
+        </div>
+        <!-- Filter / Icons -->
+        <div class="filter-section">
+          <button class="filter-button">
+            Filter
+            <span class="icon-funnel"><i class="fa-solid fa-arrow-up-a-z"></i></span>
+          </button>
+          <span class="icon-arrows"><i class="fa-solid fa-arrow-up-z-a"></i></span>
+        </div>
+      </div>
+  
+      <!-- Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Group</th>
+            <th>Section</th>
+            <th>Semester</th>
+            <th>Attendance count</th>
+            <th>Avg</th>
+          </tr>
+        </thead>
+        <tbody id="student-body">
+            <!-- Filled dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    let allStudents = [];
+  
+    function fetchStudents() {
+      fetch('/api/students')
+        .then(res => res.json())
+        .then(data => {
+          allStudents = data;
+          renderStudents(allStudents);
+        });
+    }
+  
+    function renderStudents(students) {
+      const tbody = document.getElementById('student-body');
+      tbody.innerHTML = '';
+      students.forEach(student => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${student.name}</td>
+            <td>${student.student_group}</td>
+            <td>${student.section}</td>
+            <td>${student.semester}</td>
+            <td>${student.attendance_count}</td>
+            <td>${student.average}%</td>
+          </tr>
+        `;
+      });
+    }
+  
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase();
+      const filtered = allStudents.filter(s =>
+        s.name.toLowerCase().includes(keyword) ||
+        s.student_group.toLowerCase().includes(keyword) ||
+        s.section.toString().includes(keyword) ||
+        s.semester.toString().includes(keyword)
+      );
+      renderStudents(filtered);
+    });
+  
+    fetchStudents();
+  </script>
+  
+  
+  
+</body>
+</html>

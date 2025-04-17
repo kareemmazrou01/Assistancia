@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Asistencia</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Your Custom CSS -->
+  <link rel="stylesheet" href="login.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7"
+    crossorigin="anonymous"
+  >
+
+  <title>Asistencia</title>
+</head>
+<body>
+  <div class="container-flex">
+    
+    <div class="left">
+      <div class="login-box">
+        <h2 class="mb-4 text-left">Log in</h2>
+        <form>
+          <!-- Username -->
+          <div class="mb-3">
+            <input 
+              type="text" 
+              class="form-control inp" 
+              placeholder="Username"
+            >
+          </div>
+          <!-- Password -->
+          <div class="mb-3">
+            <input 
+              type="password" 
+              class="form-control" 
+              placeholder="Password"
+            >
+          </div>
+          <!-- Remember Me & Forgot Password -->
+          <div class="d-flex justify-content-between mb-3">
+            <div class="form-check">
+              <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="rememberMe"
+              >
+              <label class="form-check-label" for="rememberMe">Remember me</label>
+            </div>
+            <a href="#" class="forgot-pass">Forgot password?</a>
+          </div>
+
+          <!-- Login Button -->
+          <div class="d-flex justify-content-center">
+            <button type="button" class="btn btn-dark login-btn" style="width: 150px;" onclick="handleLogin()">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+   
+    <div class="right">
+      <img src="assets/logo.png" alt="logo" width="50%" height="50%" class="responsive-img">
+    </div>
+
+  </div>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"
+    crossorigin="anonymous"
+  ></script>
+
+  <script>
+    function handleLogin() {
+      const username = document.querySelector('input[placeholder="Username"]').value;
+      const password = document.querySelector('input[placeholder="Password"]').value;
+    
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = 'live.html';
+        } else {
+          alert('Invalid username or password');
+        }
+      })
+      .catch(err => {
+        console.error('Login error:', err);
+        alert('Server error during login.');
+      });
+    }
+    </script>
+    
+</body>
+</html>
