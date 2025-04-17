@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asistencia - Live View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="live.css">
+  <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <!-- Optional: Include Font Awesome for icons -->
+  <script src="https://kit.fontawesome.com/YOUR_KIT_ID.js" crossorigin="anonymous"></script>
+
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header>
+    <!-- Replace the text logo with an image logo -->
+    <div class="logo">
+      <a href="live.html">
+      <img src="assets/nav_logo.png" alt="Logo">
+    </a>
+    </div>
+    <div class="header-nav-wrapper">
+      <nav>
+        <ul>
+          <li><a href="#" class="active">Home</a></li>
+          <li><a href="#">Report</a></li>
+          <li><a href="student.html">Students</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Left: Live View Section -->
+    <div class="live-view-section">
+      <div class="live-view-header">
+        <h2>Live view</h2>
+        <div class="course-dropdown">
+          <select name="course" id="course">
+            <option value="Course 1">Classroom 1</option>
+            <option value="Course 2">Classroom 2</option>
+            <option value="Course 3">Classroom 3</option>
+          </select>
+        </div>
+      </div>
+      <video class="video-placeholder" autoplay playsinline></video>
+    </div>
+    
+    <!-- Right: Attendance Section with Custom Table -->
+    <div class="attendance-section">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th style="width: 50%;">Name</th>
+            <th style="width: 50%;">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="record-box fonti">
+                <span class="record-number">1.</span>
+                <span>Jana Elsahly</span>
+                <i class="fas fa-envelope"></i>
+              </div>
+            </td>
+            <td>
+              <div class="record-box fonti">
+                13:00 1/4/2025
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="record-box fonti">
+                <span class="record-number fonti">2.</span>
+                <span class="fonti">Jana Elsahly</span>
+                <i class="fas fa-envelope"></i>
+              </div>
+            </td>
+            <td>
+              <div class="record-box fonti">
+                13:00 1/4/2025
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="record-box fonti">
+                <span class="record-number">3.</span>
+                <span>Jana Elsahly</span>
+                <i class="fas fa-envelope"></i>
+              </div>
+            </td>
+            <td>
+              <div class="record-box fonti">
+                13:00 1/4/2025
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="record-box fonti">
+                <span class="record-number">4.</span>
+                <span>Jana Elsahly</span>
+                <i class="fas fa-sync"></i>
+              </div>
+            </td>
+            <td>
+              <div class="record-box fonti">
+                13:00 1/4/2025
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- The Add button is preserved -->
+      <button class="add-button">Add</button>
+    </div>
+  </div>
+  
+  <script>
+    // Check if the browser supports getUserMedia for camera access
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(stream) {
+          const videoElement = document.querySelector('.video-placeholder');
+          if ('srcObject' in videoElement) {
+            videoElement.srcObject = stream;
+          } else {
+            videoElement.src = window.URL.createObjectURL(stream);
+          }
+        })
+        .catch(function(err) {
+          console.error("Error accessing the camera: ", err);
+        });
+    } else {
+      console.error("getUserMedia is not supported in this browser.");
+    }
+  </script>
+</body>
+</html>
