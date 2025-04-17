@@ -57,10 +57,10 @@
             </div>
             <a href="#" class="forgot-pass">Forgot password?</a>
           </div>
+
           <!-- Login Button -->
-           
           <div class="d-flex justify-content-center">
-            <button type="button" class="btn btn-dark login-btn" style="width: 150px;" onclick="window.location.href='live.html'">Login</button>
+            <button type="button" class="btn btn-dark login-btn" style="width: 150px;" onclick="handleLogin()">Login</button>
           </div>
         </form>
       </div>
@@ -78,5 +78,31 @@
     integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"
     crossorigin="anonymous"
   ></script>
+
+  <script>
+    function handleLogin() {
+      const username = document.querySelector('input[placeholder="Username"]').value;
+      const password = document.querySelector('input[placeholder="Password"]').value;
+    
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = 'live.html';
+        } else {
+          alert('Invalid username or password');
+        }
+      })
+      .catch(err => {
+        console.error('Login error:', err);
+        alert('Server error during login.');
+      });
+    }
+    </script>
+    
 </body>
 </html>

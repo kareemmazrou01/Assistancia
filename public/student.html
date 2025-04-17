@@ -9,6 +9,31 @@
 
 </head>
 <body>
+<script>
+  fetch('/api/session')
+    .then(res => res.json())
+    .then(data => {
+      if (!data.loggedIn) {
+        window.location.href = 'login.html';
+      } else {
+        const userRole = data.role; // Get the role from session
+        if (userRole === 'student') {
+          // Redirect students to their attendance page or dashboard
+          window.location.href = 'student-dashboard.html';
+        } else if (userRole === 'teacher') {
+          // Teachers can access the live page
+          console.log('Teacher access granted.');
+        } else if (userRole === 'admin') {
+          // Admins have full access
+          console.log('Admin access granted.');
+        }
+      }
+    })
+    .catch(err => {
+      alert('Error checking session: ' + err.message);
+      window.location.href = 'login.html';
+    });
+</script>
   <!-- Header / Navigation -->
   <header>
     <div class="logo">
@@ -34,7 +59,7 @@
       <div class="search-filter-row">
         <!-- Centered search bar -->
         <div class="search-box">
-          <input type="text" placeholder="Search" />
+          <input type="text" id="searchInput" placeholder="Search" />
         </div>
         <!-- Filter / Icons -->
         <div class="filter-section">
@@ -58,42 +83,56 @@
             <th>Avg</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>Person 1</td>
-            <td>A</td>
-            <td>2</td>
-            <td>2</td>
-            <td>1</td>
-            <td>0%</td>
-          </tr>
-          <tr>
-            <td>Person 1</td>
-            <td>A</td>
-            <td>2</td>
-            <td>2</td>
-            <td>1</td>
-            <td>0%</td>
-          </tr>
-          <tr>
-            <td>Person 1</td>
-            <td>A</td>
-            <td>2</td>
-            <td>2</td>
-            <td>1</td>
-            <td>0%</td>
-          </tr>
-          <tr>
-            <td>Person 1</td>
-            <td>A</td>
-            <td>2</td>
-            <td>2</td>
-            <td>1</td>
-            <td>0%</td>
-          </tr>
+        <tbody id="student-body">
+            <!-- Filled dynamically -->
         </tbody>
       </table>
     </div>
   </div>
+  <script>
+    let allStudents = [];
+  
+    function fetchStudents() {
+      fetch('/api/students')
+        .then(res => res.json())
+        .then(data => {
+          allStudents = data;
+          renderStudents(allStudents);
+        });
+    }
+  
+    function renderStudents(students) {
+      const tbody = document.getElementById('student-body');
+      tbody.innerHTML = '';
+      students.forEach(student => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${student.name}</td>
+            <td>${student.student_group}</td>
+            <td>${student.section}</td>
+            <td>${student.semester}</td>
+            <td>${student.attendance_count}</td>
+            <td>${student.average}%</td>
+          </tr>
+        `;
+      });
+    }
+  
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase();
+      const filtered = allStudents.filter(s =>
+        s.name.toLowerCase().includes(keyword) ||
+        s.student_group.toLowerCase().includes(keyword) ||
+        s.section.toString().includes(keyword) ||
+        s.semester.toString().includes(keyword)
+      );
+      renderStudents(filtered);
+    });
+  
+    fetchStudents();
+  </script>
+  
+  
+  
 </body>
 </html>

@@ -13,6 +13,31 @@
 
 </head>
 <body>
+<script>
+  fetch('/api/session')
+    .then(res => res.json())
+    .then(data => {
+      if (!data.loggedIn) {
+        window.location.href = 'login.html';
+      } else {
+        const userRole = data.role; // Get the role from session
+        if (userRole === 'student') {
+          // Redirect students to their attendance page or dashboard
+          window.location.href = 'student-dashboard.html';
+        } else if (userRole === 'teacher') {
+          // Teachers can access the live page
+          console.log('Teacher access granted.');
+        } else if (userRole === 'admin') {
+          // Admins have full access
+          console.log('Admin access granted.');
+        }
+      }
+    })
+    .catch(err => {
+      alert('Error checking session: ' + err.message);
+      window.location.href = 'login.html';
+    });
+</script>
   <!-- Header / Navigation -->
   <header>
     <!-- Replace the text logo with an image logo -->
@@ -58,63 +83,8 @@
             <th style="width: 50%;">Time</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>
-              <div class="record-box fonti">
-                <span class="record-number">1.</span>
-                <span>Jana Elsahly</span>
-                <i class="fas fa-envelope"></i>
-              </div>
-            </td>
-            <td>
-              <div class="record-box fonti">
-                13:00 1/4/2025
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="record-box fonti">
-                <span class="record-number fonti">2.</span>
-                <span class="fonti">Jana Elsahly</span>
-                <i class="fas fa-envelope"></i>
-              </div>
-            </td>
-            <td>
-              <div class="record-box fonti">
-                13:00 1/4/2025
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="record-box fonti">
-                <span class="record-number">3.</span>
-                <span>Jana Elsahly</span>
-                <i class="fas fa-envelope"></i>
-              </div>
-            </td>
-            <td>
-              <div class="record-box fonti">
-                13:00 1/4/2025
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="record-box fonti">
-                <span class="record-number">4.</span>
-                <span>Jana Elsahly</span>
-                <i class="fas fa-sync"></i>
-              </div>
-            </td>
-            <td>
-              <div class="record-box fonti">
-                13:00 1/4/2025
-              </div>
-            </td>
-          </tr>
+        <tbody id="attendance-body">
+          <!-- Filled dynamically -->
         </tbody>
       </table>
       <!-- The Add button is preserved -->
@@ -122,6 +92,7 @@
     </div>
   </div>
   
+  <!-- Frontend -->
   <script>
     // Check if the browser supports getUserMedia for camera access
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -141,5 +112,67 @@
       console.error("getUserMedia is not supported in this browser.");
     }
   </script>
+
+  <!-- Added for backend -->
+  <script>
+    let studentOptions = [];
+
+    function fetchAttendance() {
+      fetch('/api/attendance')
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('attendance-body');
+          tbody.innerHTML = '';
+          data.forEach((entry, index) => {
+            tbody.innerHTML += `
+              <tr>
+                <td>
+                  <div class="record-box fonti">
+                    <span class="record-number">${index + 1}.</span>
+                    <span>${entry.name}</span> <!-- ✅ Shows the name -->
+                  </div>
+                </td>
+                <td>
+                  <div class="record-box fonti">
+                    ${new Date(entry.timestamp).toLocaleString()}
+                  </div>
+                </td>
+              </tr>`;
+          });
+        });
+    }
+
+    function fetchStudentsForDropdown() {
+      fetch('/api/students')
+        .then(res => res.json())
+        .then(data => {
+          studentOptions = data;
+        });
+    }
+
+    document.querySelector('.add-button').addEventListener('click', () => {
+      if (studentOptions.length === 0) return alert('No students available.');
+
+      const choices = studentOptions.map(s => `${s.university_id} - ${s.name}`).join('\n');
+      const selected = prompt(`Enter university ID:\n${choices}`);
+
+      const university_id = selected?.split('-')[0]?.trim();
+      if (!university_id) return;
+
+      fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ university_id })
+      })
+      .then(res => res.json())
+      .then(() => fetchAttendance());
+
+    });
+
+    fetchAttendance();
+    fetchStudentsForDropdown();
+  </script>
+
+  
 </body>
 </html>
