@@ -28,11 +28,16 @@ db.connect(err => {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
-  secret: 'your_super_secret_key', // change this in production
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false
 }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Add default route to serve load.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'load.html'));
+});
 
 // ======== Role-based Middleware ========
 function isAdmin(req, res, next) {
@@ -81,10 +86,16 @@ app.post('/api/login', (req, res) => {
 
 // ✅ Session Check Route
 app.get('/api/session', (req, res) => {
-  res.json({ loggedIn: req.session.loggedIn || false, role: req.session.user?.role });
+  res.json({
+    loggedIn: req.session.loggedIn || false,
+    role: req.session.user?.role,
+    id: req.session.user?.id,
+    username: req.session.user?.username,
+    name: req.session.user?.name
+  });
 });
 
-// ✅ Logout Route
+// ✅ Logout Route (Don't konw if we even use it)
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => {
     res.json({ success: true });
@@ -93,44 +104,87 @@ app.post('/api/logout', (req, res) => {
 
 // ✅ Get All Attendance
 app.get('/api/attendance', (req, res) => {
-  const sql = `
+  const class_id = req.query.class_id;
+  let sql = `
     SELECT attendance.id, students.name, attendance.timestamp
     FROM attendance
     LEFT JOIN students ON attendance.student_id = students.id
-    ORDER BY attendance.timestamp DESC
   `;
-  db.query(sql, (err, results) => {
+  
+  if (class_id) {
+    sql += ' WHERE attendance.class_id = ?';
+  }
+  
+  sql += ' ORDER BY attendance.timestamp DESC';
+  
+  const params = class_id ? [class_id] : [];
+  db.query(sql, params, (err, results) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json(results);
   });
 });
 
-// ✅ Add Attendance Using University ID
-app.post('/api/attendance', (req, res) => {
-  const { university_id, timestamp } = req.body;
-  if (!university_id || !timestamp) return res.status(400).json({ error: 'Missing university_id or timestamp' });
+// Utility: Convert ISO string to MySQL DATETIME
+function toMySQLDatetime(isoString) {
+  // Converts ISO 8601 string to MySQL DATETIME format
+  const d = new Date(isoString);
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0') + ' ' +
+    String(d.getHours()).padStart(2, '0') + ':' +
+    String(d.getMinutes()).padStart(2, '0') + ':' +
+    String(d.getSeconds()).padStart(2, '0');
+}
 
-  const findSQL = 'SELECT id FROM students WHERE university_id = ?';
-  db.query(findSQL, [university_id], (err, results) => {
-    if (err) return res.status(500).json({ error: 'DB lookup failed' });
-    if (results.length === 0) return res.status(404).json({ error: 'Student not found' });
+// AI Attendance endpoint for computer vision integration
+app.post('/api/ai-attendance', (req, res) => {
+  const { university_id, class_id, timestamp } = req.body;
+  if (!university_id || !class_id || !timestamp) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  const mysqlTimestamp = toMySQLDatetime(timestamp);
+  const dateOnly = mysqlTimestamp.split(' ')[0];
 
-    const student_id = results[0].id;
+  // 1. Find student by university_id
+  const findStudentSQL = 'SELECT id FROM students WHERE university_id = ?';
+  db.query(findStudentSQL, [university_id], (err, studentResults) => {
+    if (err) return res.status(500).json({ error: 'DB lookup failed', details: err.message });
+    if (studentResults.length === 0) return res.status(404).json({ error: 'Student not found' });
+    const student_id = studentResults[0].id;
 
-    const insertSQL = 'INSERT INTO attendance (student_id, timestamp) VALUES (?, ?)';
-    db.query(insertSQL, [student_id, timestamp], (err2, insertResult) => {
-      if (err2) return res.status(500).json({ error: 'Insert failed' });
+    // 2. Check if student is enrolled in the class
+    const checkEnrollSQL = 'SELECT * FROM class_students WHERE class_id = ? AND student_id = ?';
+    db.query(checkEnrollSQL, [class_id, student_id], (errEnroll, enrollResults) => {
+      if (errEnroll) return res.status(500).json({ error: 'Enrollment check failed', details: errEnroll.message });
+      if (enrollResults.length === 0) return res.status(400).json({ error: 'Student is not enrolled in this class' });
 
-      const updateSQL = `
-        UPDATE students
-        SET attendance_count = (
-          SELECT COUNT(*) FROM attendance WHERE student_id = ?
-        )
-        WHERE id = ?
+      // 3. Prevent duplicate attendance for the same day
+      const checkDuplicateSQL = `
+        SELECT * FROM attendance
+        WHERE student_id = ? AND class_id = ? AND DATE(timestamp) = ?
       `;
-      db.query(updateSQL, [student_id, student_id], (err3) => {
-        if (err3) return res.status(500).json({ error: 'Update failed' });
-        res.json({ success: true, id: insertResult.insertId });
+      db.query(checkDuplicateSQL, [student_id, class_id, dateOnly], (errDup, dupResults) => {
+        if (errDup) return res.status(500).json({ error: 'Duplicate check failed', details: errDup.message });
+        if (dupResults.length > 0) return res.status(400).json({ error: 'Attendance already recorded for this student today.' });
+
+        // 4. Insert attendance record
+        const insertSQL = 'INSERT INTO attendance (student_id, timestamp, class_id) VALUES (?, ?, ?)';
+        db.query(insertSQL, [student_id, mysqlTimestamp, class_id], (err2, insertResult) => {
+          if (err2) return res.status(500).json({ error: 'Insert failed', details: err2.message });
+
+          // 5. Update student's attendance count
+          const updateSQL = `
+            UPDATE students
+            SET attendance_count = (
+              SELECT COUNT(*) FROM attendance WHERE student_id = ?
+            )
+            WHERE id = ?
+          `;
+          db.query(updateSQL, [student_id, student_id], (err3) => {
+            if (err3) return res.status(500).json({ error: 'Update failed', details: err3.message });
+            res.json({ success: true, id: insertResult.insertId });
+          });
+        });
       });
     });
   });
@@ -143,8 +197,8 @@ app.get('/api/students', (req, res) => {
   let params = [];
 
   if (search) {
-    sql += ' WHERE name LIKE ? OR student_group LIKE ? OR section = ? OR semester = ?';
-    params = [`%${search}%`, `%${search}%`, search, search];
+    sql += ' WHERE name LIKE ? OR student_group LIKE ? OR section = ? OR semester = ? OR university_id = ?';
+    params = [`%${search}%`, `%${search}%`, search, search, search];
   }
 
   sql += ' ORDER BY name ASC';
@@ -154,21 +208,81 @@ app.get('/api/students', (req, res) => {
   });
 });
 
-// ✅ For AI Model Integration
-app.post('/api/ai-attendance', (req, res) => {
-  const { student_id } = req.body;
-  if (!student_id) return res.status(400).json({ error: 'Missing student_id' });
+// ✅ Test Route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API working ✅' });
+});
 
-  const sql = 'INSERT INTO attendance (student_id) VALUES (?)';
-  db.query(sql, [student_id], (err, result) => {
-    if (err) return res.status(500).json({ error: 'Insert failed' });
+// ✅ Class Management Routes
+app.post('/api/classes', isTeacher, (req, res) => {
+  const { name, description, schedule, teacher_id } = req.body;
+  const sql = 'INSERT INTO classes (name, description, schedule, teacher_id) VALUES (?, ?, ?, ?)';
+  
+  db.query(sql, [name, description, schedule, teacher_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to create class' });
     res.json({ success: true, id: result.insertId });
   });
 });
 
-// ✅ Test Route
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API working ✅' });
+app.get('/api/classes', (req, res) => {
+  const sql = `
+    SELECT c.*, COALESCE(u.name, u.username) as teacher_name 
+    FROM classes c 
+    LEFT JOIN users u ON c.teacher_id = u.id
+  `;
+  
+  console.log('Fetching classes...');
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching classes:', err);
+      // Check if the error is due to missing tables
+      if (err.code === 'ER_NO_SUCH_TABLE') {
+        return res.status(500).json({ 
+          error: 'Database tables not set up. Please run the SQL setup script.',
+          details: err.message 
+        });
+      }
+      return res.status(500).json({ 
+        error: 'Failed to fetch classes',
+        details: err.message 
+      });
+    }
+    console.log('Classes fetched:', results);
+    res.json(results);
+  });
+});
+
+app.post('/api/classes/:classId/students', isTeacher, (req, res) => {
+  const { student_id } = req.body;
+  const { classId } = req.params;
+
+  // Prevent duplicate enrollments
+  const checkSQL = 'SELECT * FROM class_students WHERE class_id = ? AND student_id = ?';
+  db.query(checkSQL, [classId, student_id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (results.length > 0) return res.status(400).json({ error: 'Student already enrolled' });
+
+    const sql = 'INSERT INTO class_students (class_id, student_id) VALUES (?, ?)';
+    db.query(sql, [classId, student_id], (err2, result) => {
+      if (err2) return res.status(500).json({ error: 'Failed to add student to class' });
+      res.json({ success: true });
+    });
+  });
+});
+
+app.get('/api/classes/:classId/students', (req, res) => {
+  const { classId } = req.params;
+  const sql = `
+    SELECT s.* 
+    FROM students s
+    JOIN class_students cs ON s.id = cs.student_id
+    WHERE cs.class_id = ?
+  `;
+  
+  db.query(sql, [classId], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch class students' });
+    res.json(results);
+  });
 });
 
 // ======== Start Server ========

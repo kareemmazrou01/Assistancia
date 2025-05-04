@@ -1,12 +1,13 @@
+<!-- login.html: Login page for all users -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Asistencia</title>
+  <title>Assistancia - Login</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- Your Custom CSS -->
+  <!-- Custom CSS -->
   <link rel="stylesheet" href="login.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,13 +29,15 @@
     <div class="left">
       <div class="login-box">
         <h2 class="mb-4 text-left">Log in</h2>
-        <form>
+        <form id="loginForm">
           <!-- Username -->
           <div class="mb-3">
             <input 
               type="text" 
               class="form-control inp" 
               placeholder="Username"
+              id="username"
+              required
             >
           </div>
           <!-- Password -->
@@ -43,6 +46,8 @@
               type="password" 
               class="form-control" 
               placeholder="Password"
+              id="password"
+              required
             >
           </div>
           <!-- Remember Me & Forgot Password -->
@@ -60,9 +65,10 @@
 
           <!-- Login Button -->
           <div class="d-flex justify-content-center">
-            <button type="button" class="btn btn-dark login-btn" style="width: 150px;" onclick="handleLogin()">Login</button>
+            <button type="submit" class="btn btn-dark login-btn" style="width: 150px;">Login</button>
           </div>
         </form>
+        <div id="loginError" style="color:red;margin-top:10px;"></div>
       </div>
     </div>
     
@@ -80,29 +86,30 @@
   ></script>
 
   <script>
-    function handleLogin() {
-      const username = document.querySelector('input[placeholder="Username"]').value;
-      const password = document.querySelector('input[placeholder="Password"]').value;
-    
+    // Handle login form submission
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      // Collect credentials
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      // Send login request to backend
       fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       })
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
         if (data.success) {
-          window.location.href = 'live.html';
+          // Redirect based on user role
+          if (data.role === 'student') window.location.href = 'student.html';
+          else window.location.href = 'live.html';
         } else {
-          alert('Invalid username or password');
+          document.getElementById('loginError').textContent = data.message || 'Login failed';
         }
-      })
-      .catch(err => {
-        console.error('Login error:', err);
-        alert('Server error during login.');
       });
-    }
-    </script>
+    });
+  </script>
     
 </body>
 </html>

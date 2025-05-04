@@ -1,17 +1,20 @@
+<!-- load.html: Splash/loading page shown on first visit -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assestancia</title>
+    <title>Assistancia - Loading</title>
     <link rel="stylesheet" href="load.css">
     <script>
+        // Redirect to login page after 2 seconds
         setTimeout(function() {
           window.location.href = "login.html";
         }, 2000);
       </script>
 </head>
 <body>
+    <!-- App logo shown during loading -->
     <img src="assets/logo.png" alt="logo">
 </body>
 </html>
