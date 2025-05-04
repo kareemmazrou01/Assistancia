@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Management - Assistancia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="live.css">
+    <link rel="stylesheet" href="classes.css">
+</head>
+<body>
+    <!-- Header / Navigation -->
+    <header>
+        <div class="logo">
+            <a href="live.html">
+                <img src="assets/nav_logo.png" alt="Logo">
+            </a>
+        </div>
+        <div class="header-nav-wrapper">
+            <nav>
+                <ul>
+                    <li><a href="live.html">Home</a></li>
+                    <li><a href="classes.html" class="active">Classes</a></li>
+                    <li><a href="student.html">Students</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="add-class-form">
+            <h2>Add New Class</h2>
+            <form id="addClassForm">
+                <input type="text" id="className" placeholder="Class Name" required>
+                <textarea id="classDescription" placeholder="Class Description" required></textarea>
+                <input type="text" id="classSchedule" placeholder="Schedule (e.g., MWF 10:00-11:30)" required>
+                <button type="submit">Add Class</button>
+            </form>
+        </div>
+
+        <div class="class-grid" id="classGrid">
+            <!-- Classes will be populated here -->
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddStudentModal()">&times;</span>
+            <h2>Add Student to Class</h2>
+            <input type="text" id="studentUniversityId" placeholder="Enter student university ID" style="width:100%;padding:10px;margin-bottom:10px;">
+            <button id="addStudentConfirmBtn" style="width:100%;padding:10px;background:#4CAF50;color:white;border:none;border-radius:4px;">Add</button>
+            <div id="addStudentError" style="color:red;margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let teacherId = null;
+        fetch('/api/session')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.loggedIn || (data.role !== 'teacher' && data.role !== 'admin')) {
+                    window.location.href = 'login.html';
+                } else {
+                    teacherId = data.id;
+                }
+            });
+
+        // Load classes
+        function loadClasses() {
+            fetch('/api/classes')
+                .then(res => res.json())
+                .then(classes => {
+                    const classGrid = document.getElementById('classGrid');
+                    classGrid.innerHTML = '';
+                    
+                    classes.forEach(cls => {
+                        const classCard = document.createElement('div');
+                        classCard.className = 'class-card';
+                        classCard.innerHTML = `
+                            <h3>${cls.name}</h3>
+                            <p>${cls.description}</p>
+                            <p><strong>Schedule:</strong> ${cls.schedule}</p>
+                            <p><strong>Teacher:</strong> ${cls.teacher_name}</p>
+                            <div class="student-list">
+                                <h4>Students</h4>
+                                <div id="students-${cls.id}">Loading...</div>
+                            </div>
+                            <button class="add-student-btn" onclick="openAddStudentModal(${cls.id})">Add Student</button>
+                        `;
+                        classGrid.appendChild(classCard);
+                        
+                        // Load students for this class
+                        loadClassStudents(cls.id);
+                    });
+                });
+        }
+
+        // Load students for a specific class
+        function loadClassStudents(classId) {
+            fetch(`/api/classes/${classId}/students`)
+                .then(res => res.json())
+                .then(students => {
+                    const studentList = document.getElementById(`students-${classId}`);
+                    if (students.length === 0) {
+                        studentList.innerHTML = '<p>No students enrolled</p>';
+                        return;
+                    }
+                    
+                    studentList.innerHTML = students.map(student => `
+                        <div class="student-item">
+                            <p>${student.name} (${student.university_id})</p>
+                        </div>
+                    `).join('');
+                });
+        }
+
+        // Add new class
+        document.getElementById('addClassForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const classData = {
+                name: document.getElementById('className').value,
+                description: document.getElementById('classDescription').value,
+                schedule: document.getElementById('classSchedule').value,
+                teacher_id: teacherId
+            };
+
+            fetch('/api/classes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(classData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    loadClasses();
+                    e.target.reset();
+                    window.dispatchEvent(new CustomEvent('classAdded'));
+                }
+            });
+        });
+
+        let currentClassIdForAdd = null;
+
+        function openAddStudentModal(classId) {
+            currentClassIdForAdd = classId;
+            document.getElementById('studentUniversityId').value = '';
+            document.getElementById('addStudentError').textContent = '';
+            document.getElementById('addStudentModal').style.display = 'flex';
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('addStudentModal').style.display = 'none';
+            currentClassIdForAdd = null;
+        }
+
+        document.getElementById('addStudentConfirmBtn').onclick = function() {
+            const universityId = document.getElementById('studentUniversityId').value.trim();
+            const errorDiv = document.getElementById('addStudentError');
+            errorDiv.textContent = '';
+            if (!universityId) {
+                errorDiv.textContent = 'Please enter a university ID.';
+                return;
+            }
+            fetch('/api/students?search=' + encodeURIComponent(universityId))
+                .then(res => res.json())
+                .then(students => {
+                    if (!students.length) {
+                        errorDiv.textContent = 'Student not found.';
+                        return;
+                    }
+                    const student = students[0];
+                    fetch(`/api/classes/${currentClassIdForAdd}/students`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ student_id: student.id })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            closeAddStudentModal();
+                            loadClassStudents(currentClassIdForAdd);
+                        } else {
+                            errorDiv.textContent = data.error || 'Failed to add student.';
+                        }
+                    });
+                });
+        };
+
+        // Close modal when clicking outside content
+        window.onclick = function(event) {
+            const modal = document.getElementById('addStudentModal');
+            if (event.target === modal) {
+                closeAddStudentModal();
+            }
+        };
+
+        // Initial load
+        loadClasses();
+    </script>
+</body>
+</html> 

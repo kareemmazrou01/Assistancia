@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -17,7 +18,9 @@
     "express-session": "^1.18.1",
     "mysql2": "^3.14.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ahmednagah031220/Assistancia.git"
