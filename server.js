@@ -285,6 +285,58 @@ app.get('/api/classes/:classId/students', (req, res) => {
   });
 });
 
+
+// ✅ Manual Attendance Insertion (Add Button in live.html)
+app.post('/api/attendance', (req, res) => {
+  const { university_id, class_id, timestamp } = req.body;
+  if (!university_id || !class_id || !timestamp) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const mysqlTimestamp = toMySQLDatetime(timestamp);
+  const dateOnly = mysqlTimestamp.split(' ')[0];
+
+  const findStudentSQL = 'SELECT id FROM students WHERE university_id = ?';
+  db.query(findStudentSQL, [university_id], (err, studentResults) => {
+    if (err) return res.status(500).json({ error: 'DB lookup failed', details: err.message });
+    if (studentResults.length === 0) return res.status(404).json({ error: 'Student not found' });
+    
+    const student_id = studentResults[0].id;
+
+    const checkEnrollSQL = 'SELECT * FROM class_students WHERE class_id = ? AND student_id = ?';
+    db.query(checkEnrollSQL, [class_id, student_id], (errEnroll, enrollResults) => {
+      if (errEnroll) return res.status(500).json({ error: 'Enrollment check failed', details: errEnroll.message });
+      if (enrollResults.length === 0) return res.status(400).json({ error: 'Student is not enrolled in this class' });
+
+      const checkDuplicateSQL = `
+        SELECT * FROM attendance
+        WHERE student_id = ? AND class_id = ? AND DATE(timestamp) = ?
+      `;
+      db.query(checkDuplicateSQL, [student_id, class_id, dateOnly], (errDup, dupResults) => {
+        if (errDup) return res.status(500).json({ error: 'Duplicate check failed', details: errDup.message });
+        if (dupResults.length > 0) return res.status(400).json({ error: 'Attendance already recorded for this student today.' });
+
+        const insertSQL = 'INSERT INTO attendance (student_id, timestamp, class_id) VALUES (?, ?, ?)';
+        db.query(insertSQL, [student_id, mysqlTimestamp, class_id], (err2, insertResult) => {
+          if (err2) return res.status(500).json({ error: 'Insert failed', details: err2.message });
+
+          const updateSQL = `
+            UPDATE students
+            SET attendance_count = (
+              SELECT COUNT(*) FROM attendance WHERE student_id = ?
+            )
+            WHERE id = ?
+          `;
+          db.query(updateSQL, [student_id, student_id], (err3) => {
+            if (err3) return res.status(500).json({ error: 'Update failed', details: err3.message });
+            res.json({ success: true, id: insertResult.insertId });
+          });
+        });
+      });
+    });
+  });
+});
+
 // ======== Start Server ========
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
