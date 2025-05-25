@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&family=Rye&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="live.css">
+  <link rel="stylesheet" href="face_recognition_styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Rokkitt:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <script src="https://kit.fontawesome.com/YOUR_KIT_ID.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
@@ -290,6 +291,180 @@
       //   // We can add face detection and attendance code here
       // });
     }
+  </script>
+
+  <script>
+    // Updated live.html with face recognition integration
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Original code remains for loading classes, etc.
+      
+      // Face Recognition Integration
+      const videoElement = document.querySelector('.video-placeholder');
+      const canvas = document.createElement('canvas');
+      let isProcessingFrame = false;
+      let recognitionActive = false;
+      let recognitionInterval;
+      const RECOGNITION_INTERVAL_MS = 1000; // Process every 1 second
+      const MODEL_API_URL = 'http://localhost:5000/detect'; // Update with your model service URL
+      
+      // Face detection status indicator
+      const statusIndicator = document.createElement('div');
+      statusIndicator.className = 'detection-status';
+      statusIndicator.innerHTML = `
+        <div class="status-indicator offline"></div>
+        <span>Face Detection: Off</span>
+      `;
+      document.querySelector('.live-view-header').appendChild(statusIndicator);
+      
+      // Add start/stop button
+      const toggleButton = document.createElement('button');
+      toggleButton.className = 'recognition-toggle';
+      toggleButton.textContent = 'Start Recognition';
+      document.querySelector('.live-view-header').appendChild(toggleButton);
+      
+      // Toggle face recognition
+      toggleButton.addEventListener('click', () => {
+        if (recognitionActive) {
+          stopRecognition();
+          toggleButton.textContent = 'Start Recognition';
+          statusIndicator.innerHTML = `
+            <div class="status-indicator offline"></div>
+            <span>Face Detection: Off</span>
+          `;
+        } else {
+          if (!currentClassId) {
+            alert('Please select a class first');
+            return;
+          }
+          startRecognition();
+          toggleButton.textContent = 'Stop Recognition';
+          statusIndicator.innerHTML = `
+            <div class="status-indicator online"></div>
+            <span>Face Detection: Active</span>
+          `;
+        }
+      });
+      
+      function startRecognition() {
+        recognitionActive = true;
+        recognitionInterval = setInterval(processVideoFrame, RECOGNITION_INTERVAL_MS);
+      }
+      
+      function stopRecognition() {
+        recognitionActive = false;
+        clearInterval(recognitionInterval);
+      }
+      
+      async function processVideoFrame() {
+        if (isProcessingFrame || !videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+          return;
+        }
+        
+        isProcessingFrame = true;
+        
+        try {
+          // Draw video frame to canvas
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(videoElement, 0, 0);
+          
+          // Convert canvas to base64
+          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          
+          // Send to model service
+          const response = await fetch(MODEL_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageData }),
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            processDetections(result.detections);
+          } else {
+            console.error('Detection failed:', result.error);
+          }
+        } catch (error) {
+          console.error('Error processing video frame:', error);
+        } finally {
+          isProcessingFrame = false;
+        }
+      }
+      
+      async function processDetections(detections) {
+        if (!detections || detections.length === 0) return;
+        
+        for (const detection of detections) {
+          if (detection.student_id) {
+            // Submit attendance for detected student
+            try {
+              const response = await fetch('/api/ai-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  university_id: detection.student_id,
+                  class_id: currentClassId,
+                  timestamp: new Date().toISOString()
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (result.success) {
+                console.log(`Attendance recorded for student ${detection.student_id}`);
+                // Add visual feedback (notification)
+                showDetectionNotification(detection.student_id);
+                // Refresh attendance list
+                fetchAttendance();
+              } else if (result.error === 'Attendance already recorded for this student today.') {
+                // Student already marked, just show visual cue
+                showDetectionNotification(detection.student_id, true);
+              } else {
+                console.error('Failed to record attendance:', result.error);
+              }
+            } catch (error) {
+              console.error('Error submitting attendance:', error);
+            }
+          }
+        }
+      }
+      
+      function showDetectionNotification(studentId, alreadyPresent = false) {
+        // Find student name from studentOptions
+        let studentName = "Unknown Student";
+        const student = studentOptions.find(s => s.university_id === studentId);
+        if (student) {
+          studentName = student.name;
+        }
+        
+        const notification = document.createElement('div');
+        notification.className = 'face-detection-notification';
+        notification.innerHTML = `
+          <div class="detection-icon ${alreadyPresent ? 'already-present' : 'new-attendance'}">
+            <i class="fas fa-user-check"></i>
+          </div>
+          <div class="detection-info">
+            <div class="student-name">${studentName}</div>
+            <div class="detection-status">
+              ${alreadyPresent ? 'Already present' : 'Attendance marked!'}
+            </div>
+          </div>
+        `;
+        
+        document.querySelector('.live-view-section').appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+          notification.classList.add('fade-out');
+          setTimeout(() => notification.remove(), 500);
+        }, 3000);
+      }
+    }); 
   </script>
 
   
