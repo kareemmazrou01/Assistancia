@@ -3,3 +3,6 @@ node_modules/
 
 # keys
 .env
+
+# venv
+face-recognition-service/venv/
